@@ -1,4 +1,5 @@
 import re
+import os
 from typing import Dict, Any, List, Tuple
 from backend.app.config import settings
 
@@ -30,31 +31,36 @@ class SecurityChecker:
     def detect_pii(self, text: str) -> List[Dict[str, Any]]:
         findings = []
         
-        # Try Presidio if available
-        try:
-            from presidio_analyzer import AnalyzerEngine
-            analyzer = AnalyzerEngine()
-            results = analyzer.analyze(text=text, entities=["EMAIL_ADDRESS", "PHONE_NUMBER", "PERSON", "LOCATION", "CREDIT_CARD", "IP_ADDRESS"], language='en')
-            for r in results:
-                snippet = text[r.start:r.end]
-                findings.append({
-                    "entity_type": r.entity_type,
-                    "snippet": snippet,
-                    "start": r.start,
-                    "end": r.end,
-                    "score": round(r.score, 2)
-                })
-        except Exception:
-            # Fallback to regex PII scanning
-            for entity_type, pattern in self.pii_patterns.items():
-                for match in re.finditer(pattern, text):
+        # Heavy Presidio SpaCy check (Opt-in via env to prevent OOM on 512MB memory limits)
+        if os.environ.get("ENABLE_HEAVY_PRESIDIO", "false").lower() == "true":
+            try:
+                from presidio_analyzer import AnalyzerEngine
+                analyzer = AnalyzerEngine()
+                results = analyzer.analyze(text=text, entities=["EMAIL_ADDRESS", "PHONE_NUMBER", "PERSON", "LOCATION", "CREDIT_CARD", "IP_ADDRESS"], language='en')
+                for r in results:
+                    snippet = text[r.start:r.end]
                     findings.append({
-                        "entity_type": entity_type,
-                        "snippet": match.group(),
-                        "start": match.start(),
-                        "end": match.end(),
-                        "score": 0.95
+                        "entity_type": r.entity_type,
+                        "snippet": snippet,
+                        "start": r.start,
+                        "end": r.end,
+                        "score": round(r.score, 2)
                     })
+                if findings:
+                    return findings
+            except Exception:
+                pass
+
+        # High-performance, zero-RAM regex PII scanning fallback
+        for entity_type, pattern in self.pii_patterns.items():
+            for match in re.finditer(pattern, text):
+                findings.append({
+                    "entity_type": entity_type,
+                    "snippet": match.group(),
+                    "start": match.start(),
+                    "end": match.end(),
+                    "score": 0.95
+                })
                     
         return findings
 
@@ -62,20 +68,21 @@ class SecurityChecker:
         redacted_text = text
         count = 0
         
-        try:
-            from presidio_analyzer import AnalyzerEngine
-            from presidio_anonymizer import AnonymizerEngine
-            analyzer = AnalyzerEngine()
-            anonymizer = AnonymizerEngine()
-            
-            results = analyzer.analyze(text=text, language='en')
-            if results:
-                anonymized_result = anonymizer.anonymize(text=text, analyzer_results=results)
-                return anonymized_result.text, len(results)
-        except Exception:
-            pass
+        if os.environ.get("ENABLE_HEAVY_PRESIDIO", "false").lower() == "true":
+            try:
+                from presidio_analyzer import AnalyzerEngine
+                from presidio_anonymizer import AnonymizerEngine
+                analyzer = AnalyzerEngine()
+                anonymizer = AnonymizerEngine()
+                
+                results = analyzer.analyze(text=text, language='en')
+                if results:
+                    anonymized_result = anonymizer.anonymize(text=text, analyzer_results=results)
+                    return anonymized_result.text, len(results)
+            except Exception:
+                pass
 
-        # Regex fallback redaction
+        # High-performance regex PII redaction
         for entity_type, pattern in self.pii_patterns.items():
             if redaction_types and entity_type not in redaction_types:
                 continue
