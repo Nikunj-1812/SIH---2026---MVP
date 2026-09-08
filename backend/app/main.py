@@ -40,15 +40,62 @@ app.add_middleware(
     expose_headers=["*"],
 )
 
+# Custom HTTP Middleware for Explicit CORS Headers on All Responses & OPTIONS Preflight
+@app.middleware("http")
+async def add_cors_headers(request: Request, call_next):
+    origin = request.headers.get("origin", "*")
+    if request.method == "OPTIONS":
+        return JSONResponse(
+            status_code=200,
+            headers={
+                "Access-Control-Allow-Origin": origin,
+                "Access-Control-Allow-Credentials": "true",
+                "Access-Control-Allow-Methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
+                "Access-Control-Allow-Headers": "*",
+            },
+            content={"status": "ok"}
+        )
+    
+    try:
+        response = await call_next(request)
+    except Exception as exc:
+        return JSONResponse(
+            status_code=500,
+            headers={
+                "Access-Control-Allow-Origin": origin,
+                "Access-Control-Allow-Credentials": "true",
+                "Access-Control-Allow-Methods": "*",
+                "Access-Control-Allow-Headers": "*",
+            },
+            content={
+                "error": {
+                    "code": "INTERNAL_SERVER_ERROR",
+                    "message": f"Server Error: {str(exc)}",
+                    "path": str(request.url)
+                }
+            }
+        )
+
+    response.headers["Access-Control-Allow-Origin"] = origin
+    response.headers["Access-Control-Allow-Credentials"] = "true"
+    return response
+
 # Global Exception Handler
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
+    origin = request.headers.get("origin", "*")
     return JSONResponse(
         status_code=500,
+        headers={
+            "Access-Control-Allow-Origin": origin,
+            "Access-Control-Allow-Credentials": "true",
+            "Access-Control-Allow-Methods": "*",
+            "Access-Control-Allow-Headers": "*",
+        },
         content={
             "error": {
                 "code": "INTERNAL_SERVER_ERROR",
-                "message": "An unexpected server error occurred. Please check logs.",
+                "message": f"Server Error: {str(exc)}",
                 "path": str(request.url)
             }
         }
