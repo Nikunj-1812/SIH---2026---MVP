@@ -58,6 +58,95 @@ def list_outputs(project_id: Optional[str] = None):
         items = [i for i in items if i.project_id == project_id]
     return items
 
+@router.api_route("/export-approved", methods=["GET", "POST"])
+def export_approved_bundle(project_id: Optional[str] = None, format: Optional[str] = None):
+    target_project = project_id or "demo-proj-1"
+    fmt = (format or "txt").lower()
+    approved_outputs = [
+        o for o in outputs_db.values()
+        if (target_project is None or o.project_id == target_project) and o.approval_status == "APPROVED"
+    ]
+
+    # Fallback 1: If no APPROVED outputs specifically match, but outputs exist for this project, use them
+    if not approved_outputs and target_project:
+        proj_outputs = [o for o in outputs_db.values() if o.project_id == target_project]
+        if proj_outputs:
+            approved_outputs = proj_outputs
+
+    # Fallback 2: If outputs_db has any approved outputs anywhere, use them
+    if not approved_outputs:
+        approved_outputs = [o for o in outputs_db.values() if o.approval_status == "APPROVED"]
+
+    # Fallback 3: If outputs_db is empty (e.g. after server restart), generate default template bundle
+    if not approved_outputs:
+        sample_hash = hashlib.sha256(b"Approved Deliverable Template").hexdigest()
+        approved_outputs = [
+            OutputItem(
+                id="out-approved-default",
+                project_id=target_project,
+                output_type="executive_summary",
+                title="Approved Executive Summary & Security Assessment",
+                content="APPROVED DELIVERABLE BUNDLE SUMMARY\n\nExecutive Overview:\nAll security controls, presidio PII redactions, and integrity proof validations have passed.\nThis deliverable is verified and ready for deployment.",
+                approval_status="APPROVED",
+                approved_by="Operator User",
+                approved_at=datetime.datetime.utcnow().isoformat() + "Z",
+                output_hash=sample_hash
+            )
+        ]
+
+    filename = f"approved_deliverables_bundle_{target_project}.{fmt}"
+
+    if fmt == "pdf":
+        try:
+            content_bytes = generate_approved_bundle_pdf(approved_outputs, target_project)
+            media_type = "application/pdf"
+        except Exception as e:
+            print(f"Error generating approved bundle PDF: {e}")
+            bundle_content = "\n\n".join([f"=== {o.title} ===\n{o.content}" for o in approved_outputs])
+            content_bytes = bundle_content.encode("utf-8")
+            media_type = "text/plain"
+            filename = f"approved_deliverables_bundle_{target_project}.txt"
+    else:
+        bundle_lines = [
+            "============================================================",
+            f"SIH 2026 PS 26154 — FINAL APPROVED DELIVERABLES BUNDLE",
+            f"Project ID: {target_project}",
+            f"Export Timestamp: {datetime.datetime.utcnow().isoformat()}Z",
+            "============================================================\n"
+        ]
+
+        for idx, out in enumerate(approved_outputs, 1):
+            bundle_lines.extend([
+                f"--- DELIVERABLE {idx}: {out.title.upper()} ---",
+                f"Approval Status: {out.approval_status}",
+                f"Approved By: {out.approved_by or 'Operator User'}",
+                f"Approved At: {out.approved_at or 'N/A'}",
+                f"SHA-256 Provenance Hash: {out.output_hash}",
+                "------------------------------------------------------------",
+                out.content,
+                "\n"
+            ])
+
+        content_bytes = "\n".join(bundle_lines).encode("utf-8")
+        media_type = "text/plain"
+
+    audit_logger.log_event(
+        user_id="usr-operator-01",
+        action="EXPORT_APPROVED_BUNDLE",
+        entity_type="project",
+        entity_id=target_project,
+        metadata={"count": len(approved_outputs), "filename": filename, "format": fmt}
+    )
+
+    return Response(
+        content=content_bytes,
+        media_type=media_type,
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"',
+            "Cache-Control": "no-cache"
+        }
+    )
+
 @router.get("/{output_id}", response_model=OutputItem)
 def get_output(output_id: str):
     item = outputs_db.get(output_id)
@@ -320,93 +409,7 @@ async def regenerate_image(output_id: str):
 
     return item
 
-@router.api_route("/export-approved", methods=["GET", "POST"])
-def export_approved_bundle(project_id: Optional[str] = None, format: str = "pdf"):
-    target_project = project_id or "demo-proj-1"
-    approved_outputs = [
-        o for o in outputs_db.values()
-        if (target_project is None or o.project_id == target_project) and o.approval_status == "APPROVED"
-    ]
 
-    # Fallback 1: If no APPROVED outputs specifically match, but outputs exist for this project, use them
-    if not approved_outputs and target_project:
-        proj_outputs = [o for o in outputs_db.values() if o.project_id == target_project]
-        if proj_outputs:
-            approved_outputs = proj_outputs
-
-    # Fallback 2: If outputs_db has any approved outputs anywhere, use them
-    if not approved_outputs:
-        approved_outputs = [o for o in outputs_db.values() if o.approval_status == "APPROVED"]
-
-    # Fallback 3: If outputs_db is empty (e.g. after server restart), generate default template bundle
-    if not approved_outputs:
-        sample_hash = hashlib.sha256(b"Approved Deliverable Template").hexdigest()
-        approved_outputs = [
-            OutputItem(
-                id="out-approved-default",
-                project_id=target_project,
-                output_type="executive_summary",
-                title="Approved Executive Summary & Security Assessment",
-                content="APPROVED DELIVERABLE BUNDLE SUMMARY\n\nExecutive Overview:\nAll security controls, presidio PII redactions, and integrity proof validations have passed.\nThis deliverable is verified and ready for deployment.",
-                approval_status="APPROVED",
-                approved_by="Operator User",
-                approved_at=datetime.datetime.utcnow().isoformat() + "Z",
-                output_hash=sample_hash
-            )
-        ]
-
-    filename = f"approved_deliverables_bundle_{target_project}.{format.lower()}"
-
-    if format.lower() == "pdf":
-        try:
-            content_bytes = generate_approved_bundle_pdf(approved_outputs, target_project)
-            media_type = "application/pdf"
-        except Exception as e:
-            print(f"Error generating approved bundle PDF: {e}")
-            bundle_content = "\n\n".join([f"=== {o.title} ===\n{o.content}" for o in approved_outputs])
-            content_bytes = bundle_content.encode("utf-8")
-            media_type = "text/plain"
-            filename = f"approved_deliverables_bundle_{target_project}.txt"
-    else:
-        bundle_lines = [
-            "============================================================",
-            f"SIH 2026 PS 26154 — FINAL APPROVED DELIVERABLES BUNDLE",
-            f"Project ID: {target_project}",
-            f"Export Timestamp: {datetime.datetime.utcnow().isoformat()}Z",
-            "============================================================\n"
-        ]
-
-        for idx, out in enumerate(approved_outputs, 1):
-            bundle_lines.extend([
-                f"--- DELIVERABLE {idx}: {out.title.upper()} ---",
-                f"Approval Status: {out.approval_status}",
-                f"Approved By: {out.approved_by or 'Operator User'}",
-                f"Approved At: {out.approved_at or 'N/A'}",
-                f"SHA-256 Provenance Hash: {out.output_hash}",
-                "------------------------------------------------------------",
-                out.content,
-                "\n"
-            ])
-
-        content_bytes = "\n".join(bundle_lines).encode("utf-8")
-        media_type = "text/plain"
-
-    audit_logger.log_event(
-        user_id="usr-operator-01",
-        action="EXPORT_APPROVED_BUNDLE",
-        entity_type="project",
-        entity_id=target_project,
-        metadata={"count": len(approved_outputs), "filename": filename, "format": format}
-    )
-
-    return Response(
-        content=content_bytes,
-        media_type=media_type,
-        headers={
-            "Content-Disposition": f'attachment; filename="{filename}"',
-            "Cache-Control": "no-cache"
-        }
-    )
 
 @router.get("/{output_id}/export")
 def export_output(output_id: str, format: str = "txt"):
