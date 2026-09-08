@@ -348,25 +348,63 @@ export default function ProjectWorkspacePage() {
   };
 
   // Export File (PDF / TXT)
-  const handleExportFile = (format: string) => {
+  const handleExportFile = async (format: string) => {
     if (!activeOutput) return;
-    const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-    const url = `${apiBase}/api/outputs/${activeOutput.id}/export?format=${format}`;
-    window.open(url, '_blank');
-    toast("Preparing Export Download", "info", `Downloading ${activeOutput.title} as ${format.toUpperCase()}`);
+    try {
+      const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+      const url = `${apiBase}/api/outputs/${activeOutput.id}/export?format=${format}`;
+      toast("Preparing Export Download", "info", `Downloading ${activeOutput.title} as ${format.toUpperCase()}`);
+      
+      const response = await fetch(url);
+      if (!response.ok) {
+        throw new Error(`Server returned status ${response.status}`);
+      }
+      const blob = await response.blob();
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      link.download = `${activeOutput.output_type}_${activeOutput.id.slice(0, 8)}.${format.toLowerCase()}`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(downloadUrl);
+      toast("✓ Export Completed", "success", `Downloaded ${activeOutput.title}`);
+    } catch (err: any) {
+      console.error("Export file error:", err);
+      // Fallback to window.open if blob fetch fails
+      const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+      window.open(`${apiBase}/api/outputs/${activeOutput.id}/export?format=${format}`, '_blank');
+    }
   };
 
   // Export All Approved Deliverables Bundle
-  const handleExportAllApproved = () => {
+  const handleExportAllApproved = async () => {
     const approvedCount = outputsList.filter(o => o.approval_status === "APPROVED").length;
-    if (approvedCount === 0) {
-      toast("No Approved Outputs Available", "warning", "Please approve at least one deliverable before exporting final bundle.");
-      return;
+    try {
+      const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+      const url = `${apiBase}/api/outputs/export-approved?project_id=${projectId}`;
+      toast("Downloading Approved Bundle", "info", `Preparing export for deliverables...`);
+      
+      const response = await fetch(url);
+      if (!response.ok) {
+        throw new Error(`Server returned status ${response.status}`);
+      }
+      const blob = await response.blob();
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      link.download = `approved_deliverables_bundle_${projectId}.txt`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(downloadUrl);
+      toast("✓ Approved Bundle Downloaded", "success", `Exported deliverables bundle.`);
+    } catch (err: any) {
+      console.error("Export bundle error:", err);
+      // Fallback to window.open if blob fetch fails
+      const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+      window.open(`${apiBase}/api/outputs/export-approved?project_id=${projectId}`, '_blank');
     }
-    const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-    const url = `${apiBase}/api/outputs/export-approved?project_id=${projectId}`;
-    window.open(url, '_blank');
-    toast("Downloading Approved Bundle", "success", `Exporting ${approvedCount} approved deliverables.`);
   };
 
   // Verify Integrity Handler
