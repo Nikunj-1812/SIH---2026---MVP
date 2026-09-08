@@ -1,0 +1,17 @@
+fastapi
+uvicorn[standard]
+python-dotenv
+pydantic
+pydantic-settings
+python-multipart
+supabase
+openai
+anthropic
+pymupdf
+python-docx
+python-pptx
+httpx
+requests
+presidio-analyzer
+presidio-anonymizer
+python-dateutil

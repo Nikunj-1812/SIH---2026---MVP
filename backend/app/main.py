@@ -1,0 +1,58 @@
+from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+import uvicorn
+
+from backend.app.config import settings
+from backend.app.api.health import router as health_router
+from backend.app.api.auth import router as auth_router
+from backend.app.api.projects import router as projects_router
+from backend.app.api.sources import router as sources_router
+from backend.app.api.generation import router as generation_router
+from backend.app.api.outputs import router as outputs_router
+from backend.app.api.security import router as security_router
+from backend.app.api.integrity import router as integrity_router
+from backend.app.api.audit import router as audit_router
+
+app = FastAPI(
+    title=settings.APP_NAME,
+    description="Secure GenAI Content Transformation Platform API",
+    version="1.0.0"
+)
+
+# CORS Configuration
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Global Exception Handler
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    return JSONResponse(
+        status_code=500,
+        content={
+            "error": {
+                "code": "INTERNAL_SERVER_ERROR",
+                "message": "An unexpected server error occurred. Please check logs.",
+                "path": str(request.url)
+            }
+        }
+    )
+
+# Include API Routers
+app.include_router(health_router)
+app.include_router(auth_router)
+app.include_router(projects_router)
+app.include_router(sources_router)
+app.include_router(generation_router)
+app.include_router(outputs_router)
+app.include_router(security_router)
+app.include_router(integrity_router)
+app.include_router(audit_router)
+
+if __name__ == "__main__":
+    uvicorn.run("backend.app.main:app", host=settings.API_HOST, port=settings.API_PORT, reload=settings.DEBUG)
