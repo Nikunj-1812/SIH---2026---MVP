@@ -597,10 +597,10 @@ export default function ProjectWorkspacePage() {
                         <input type="file" accept=".pdf,.docx,.txt" onChange={handleFileUpload} className="hidden" />
                       </label>
                       <button
-                        onClick={() => setActiveStep('config')}
-                        className="px-4 py-2 bg-blue-700 hover:bg-blue-800 text-white font-bold text-xs rounded shadow-2xs inline-flex items-center gap-1.5 transition-colors"
+                        onClick={() => setActiveStep('security')}
+                        className="px-4 py-2 bg-blue-700 hover:bg-blue-800 text-white font-bold text-xs rounded shadow-2xs inline-flex items-center gap-1.5 transition-colors cursor-pointer"
                       >
-                        Continue to Config <ArrowRight className="h-3.5 w-3.5" />
+                        Proceed to Security Scan <ArrowRight className="h-3.5 w-3.5" />
                       </button>
                     </div>
                   </div>
