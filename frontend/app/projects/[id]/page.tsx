@@ -350,7 +350,8 @@ export default function ProjectWorkspacePage() {
   // Export File (PDF / TXT)
   const handleExportFile = (format: string) => {
     if (!activeOutput) return;
-    const url = `http://localhost:8000/api/outputs/${activeOutput.id}/export?format=${format}`;
+    const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+    const url = `${apiBase}/api/outputs/${activeOutput.id}/export?format=${format}`;
     window.open(url, '_blank');
     toast("Preparing Export Download", "info", `Downloading ${activeOutput.title} as ${format.toUpperCase()}`);
   };
@@ -362,7 +363,8 @@ export default function ProjectWorkspacePage() {
       toast("No Approved Outputs Available", "warning", "Please approve at least one deliverable before exporting final bundle.");
       return;
     }
-    const url = `http://localhost:8000/api/outputs/export-approved?project_id=${projectId}`;
+    const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+    const url = `${apiBase}/api/outputs/export-approved?project_id=${projectId}`;
     window.open(url, '_blank');
     toast("Downloading Approved Bundle", "success", `Exporting ${approvedCount} approved deliverables.`);
   };
@@ -397,13 +399,13 @@ export default function ProjectWorkspacePage() {
   // Approved Count
   const approvedOutputsCount = outputsList.filter(o => o.approval_status === "APPROVED").length;
 
-  // Workflow Stepper Definitions (REQUIREMENT 7)
+  // Workflow Stepper Definitions — Truthful Step Completion Logic
   const stepperSteps = [
-    { id: 'source', number: '01', title: 'Source', completed: !!source },
-    { id: 'security', number: '02', title: 'Security', completed: !!source?.security_score },
-    { id: 'configure', number: '03', title: 'Configure', completed: selectedOutputs.length > 0 },
-    { id: 'generate', number: '04', title: 'Generate', completed: outputsList.length > 0 },
-    { id: 'review', number: '05', title: 'Review & Edit', completed: outputsList.length > 0 },
+    { id: 'source', number: '01', title: 'Source', completed: !!source && activeStep !== 'source' },
+    { id: 'security', number: '02', title: 'Security', completed: !!source?.security_score && ['configure', 'generate', 'review', 'approved', 'integrity'].includes(activeStep) },
+    { id: 'configure', number: '03', title: 'Configure', completed: ['generate', 'review', 'approved', 'integrity'].includes(activeStep) },
+    { id: 'generate', number: '04', title: 'Generate', completed: outputsList.length > 0 && ['review', 'approved', 'integrity'].includes(activeStep) },
+    { id: 'review', number: '05', title: 'Review & Edit', completed: outputsList.length > 0 && ['approved', 'integrity'].includes(activeStep) },
     { id: 'approved', number: '06', title: `Final Approved (${approvedOutputsCount})`, completed: approvedOutputsCount > 0 },
     { id: 'integrity', number: '07', title: 'Integrity Proof', completed: !!verificationResult },
   ];
