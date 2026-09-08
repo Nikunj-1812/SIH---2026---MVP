@@ -350,60 +350,70 @@ export default function ProjectWorkspacePage() {
   // Export File (PDF / TXT)
   const handleExportFile = async (format: string) => {
     if (!activeOutput) return;
+    const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+    const downloadUrl = `${apiBase}/api/outputs/${activeOutput.id}/export?format=${format}`;
+    toast("Preparing Export Download", "info", `Downloading ${activeOutput.title} as ${format.toUpperCase()}`);
+    
     try {
-      const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-      const url = `${apiBase}/api/outputs/${activeOutput.id}/export?format=${format}`;
-      toast("Preparing Export Download", "info", `Downloading ${activeOutput.title} as ${format.toUpperCase()}`);
-      
-      const response = await fetch(url);
+      const response = await fetch(downloadUrl);
       if (!response.ok) {
         throw new Error(`Server returned status ${response.status}`);
       }
       const blob = await response.blob();
-      const downloadUrl = window.URL.createObjectURL(blob);
+      const blobUrl = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
-      link.href = downloadUrl;
+      link.href = blobUrl;
       link.download = `${activeOutput.output_type}_${activeOutput.id.slice(0, 8)}.${format.toLowerCase()}`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      window.URL.revokeObjectURL(downloadUrl);
+      window.URL.revokeObjectURL(blobUrl);
       toast("✓ Export Completed", "success", `Downloaded ${activeOutput.title}`);
     } catch (err: any) {
-      console.error("Export file error:", err);
-      // Fallback to window.open if blob fetch fails
-      const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-      window.open(`${apiBase}/api/outputs/${activeOutput.id}/export?format=${format}`, '_blank');
+      console.error("Export file fetch error:", err);
+      // Native browser download fallback without tab redirection
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      link.download = `${activeOutput.output_type}_${activeOutput.id.slice(0, 8)}.${format.toLowerCase()}`;
+      link.target = "_self";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
     }
   };
 
-  // Export All Approved Deliverables Bundle
-  const handleExportAllApproved = async () => {
-    const approvedCount = outputsList.filter(o => o.approval_status === "APPROVED").length;
+  // Export All Approved Deliverables Bundle (PDF / TXT)
+  const handleExportAllApproved = async (format: string | any = "pdf") => {
+    const exportFormat = (typeof format === 'string' && format) ? format.toLowerCase() : 'pdf';
+    const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+    const downloadUrl = `${apiBase}/api/outputs/export-approved?project_id=${projectId}&format=${exportFormat}`;
+    toast("Downloading Approved Bundle", "info", `Preparing ${exportFormat.toUpperCase()} export for all deliverables...`);
+    
     try {
-      const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-      const url = `${apiBase}/api/outputs/export-approved?project_id=${projectId}`;
-      toast("Downloading Approved Bundle", "info", `Preparing export for deliverables...`);
-      
-      const response = await fetch(url);
+      const response = await fetch(downloadUrl);
       if (!response.ok) {
         throw new Error(`Server returned status ${response.status}`);
       }
       const blob = await response.blob();
-      const downloadUrl = window.URL.createObjectURL(blob);
+      const blobUrl = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
-      link.href = downloadUrl;
-      link.download = `approved_deliverables_bundle_${projectId}.txt`;
+      link.href = blobUrl;
+      link.download = `approved_deliverables_bundle_${projectId}.${exportFormat}`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      window.URL.revokeObjectURL(downloadUrl);
-      toast("✓ Approved Bundle Downloaded", "success", `Exported deliverables bundle.`);
+      window.URL.revokeObjectURL(blobUrl);
+      toast("✓ Approved Bundle Downloaded", "success", `Exported deliverables PDF bundle.`);
     } catch (err: any) {
-      console.error("Export bundle error:", err);
-      // Fallback to window.open if blob fetch fails
-      const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-      window.open(`${apiBase}/api/outputs/export-approved?project_id=${projectId}`, '_blank');
+      console.error("Export bundle fetch error:", err);
+      // Native browser download fallback without tab redirection
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      link.download = `approved_deliverables_bundle_${projectId}.${exportFormat}`;
+      link.target = "_self";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
     }
   };
 
