@@ -44,7 +44,7 @@ export default function LoginPage() {
     <div className="min-h-screen bg-slate-50/70 flex flex-col justify-center py-12 px-4 sm:px-6 lg:px-8 font-sans">
       <div className="sm:mx-auto sm:w-full sm:max-w-md text-center space-y-2">
         <h1 className="text-2xl font-bold tracking-tight text-slate-900">
-          Setuvani Workspace
+          SETU-VANI Workspace
         </h1>
         <p className="text-xs text-slate-600 font-medium">
           SIH 2026 Problem Statement 26154 — Secure GenAI Content Engine

@@ -40,7 +40,7 @@ export default function Navbar() {
           <Link href="/dashboard" className="flex items-center gap-2.5 group">
             <div className="flex flex-col">
               <span className="text-sm font-bold tracking-tight text-slate-900 leading-none">
-                Setuvani
+                SETU-VANI
               </span>
               <span className="text-[10px] font-semibold text-blue-700 tracking-wider mt-0.5 uppercase">
                 SIH 2026 PS 26154

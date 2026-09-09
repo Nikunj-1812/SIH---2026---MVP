@@ -10,7 +10,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: 'Setuvani - SIH 2026 PS 26154 MVP',
+  title: 'SETU-VANI - SIH 2026 PS 26154 MVP',
   description: 'Secure GenAI Content Transformation Platform - Understand once, generate multiple controlled outputs, validate, and verify provenance.',
 };
 
