@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ShieldCheck, Lock, Mail, AlertTriangle } from 'lucide-react';
+import { Lock, Mail, AlertTriangle } from 'lucide-react';
 import { fetchApi } from '@/lib/api';
 
 export default function LoginPage() {
@@ -43,11 +43,8 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen bg-slate-50/70 flex flex-col justify-center py-12 px-4 sm:px-6 lg:px-8 font-sans">
       <div className="sm:mx-auto sm:w-full sm:max-w-md text-center space-y-2">
-        <div className="inline-flex justify-center items-center h-12 w-12 rounded-xl bg-blue-700 text-white shadow-2xs">
-          <ShieldCheck className="h-7 w-7 text-white" />
-        </div>
         <h1 className="text-2xl font-bold tracking-tight text-slate-900">
-          SecureTransform Workspace
+          Setuvani Workspace
         </h1>
         <p className="text-xs text-slate-600 font-medium">
           SIH 2026 Problem Statement 26154 — Secure GenAI Content Engine

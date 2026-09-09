@@ -9,7 +9,6 @@ import {
   FileText, 
   Upload, 
   ShieldAlert, 
-  ShieldCheck, 
   Sparkles, 
   CheckCircle2, 
   AlertTriangle, 

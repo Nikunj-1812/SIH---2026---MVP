@@ -4,7 +4,6 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { 
-  ShieldCheck, 
   LogOut, 
   Menu, 
   X, 
@@ -39,12 +38,9 @@ export default function Navbar() {
           </button>
 
           <Link href="/dashboard" className="flex items-center gap-2.5 group">
-            <div className="h-8.5 w-8.5 rounded-lg bg-blue-700 text-white flex items-center justify-center font-bold shadow-2xs group-hover:bg-blue-800 transition-colors">
-              <ShieldCheck className="h-5 w-5 text-white" />
-            </div>
             <div className="flex flex-col">
               <span className="text-sm font-bold tracking-tight text-slate-900 leading-none">
-                SecureTransform
+                Setuvani
               </span>
               <span className="text-[10px] font-semibold text-blue-700 tracking-wider mt-0.5 uppercase">
                 SIH 2026 PS 26154
